@@ -3,89 +3,109 @@ import os
 import hashlib
 from datetime import datetime
 import concurrent.futures
+import re
 
-# Конфигурация 8 стран
+# Конфигурация 8 стран с русскими названиями
 COUNTRIES = {
-    'netherlands': {
+    'Нидерланды': {
         'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=nl',
         'flag': '🇳🇱',
-        'name': 'Нидерланды'
+        'filename': '🇳🇱 Нидерланды 🇳🇱'
     },
-    'germany': {
+    'Германия': {
         'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=de',
         'flag': '🇩🇪',
-        'name': 'Германия'
+        'filename': '🇩🇪 Германия 🇩🇪'
     },
-    'finland': {
+    'Финляндия': {
         'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=fi',
         'flag': '🇫🇮',
-        'name': 'Финляндия'
+        'filename': '🇫🇮 Финляндия 🇫🇮'
     },
-    'turkey': {
+    'Турция': {
         'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=tr',
         'flag': '🇹🇷',
-        'name': 'Турция'
+        'filename': '🇹🇷 Турция 🇹🇷'
     },
-    'uk': {
+    'Великобритания': {
         'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=gb',
         'flag': '🇬🇧',
-        'name': 'Великобритания'
+        'filename': '🇬🇧 Великобритания 🇬🇧'
     },
-    'sweden': {
+    'Швеция': {
         'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=se',
         'flag': '🇸🇪',
-        'name': 'Швеция'
+        'filename': '🇸🇪 Швеция 🇸🇪'
     },
-    'france': {
+    'Франция': {
         'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=fr',
         'flag': '🇫🇷',
-        'name': 'Франция'
+        'filename': '🇫🇷 Франция 🇫🇷'
     },
-    'norway': {
+    'Норвегия': {
         'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=no',
         'flag': '🇳🇴',
-        'name': 'Норвегия'
+        'filename': '🇳🇴 Норвегия 🇳🇴'
     }
 }
 
 OUTPUT_DIR = "subscriptions"
 
-def fetch_country_data(country_key, country_info):
+def clean_filename(filename):
+    """Очистка имени файла от небезопасных символов"""
+    # Заменяем символы, которые могут быть проблемными в именах файлов
+    safe_name = re.sub(r'[<>:"/\\|?*]', '', filename)
+    safe_name = safe_name.replace(' ', '_')  # Заменяем пробелы на подчеркивания
+    return safe_name + '.txt'
+
+def fetch_country_data(country_name, country_info):
     """Загрузка данных для одной страны"""
     try:
-        response = requests.get(country_info['url'], timeout=10)
+        print(f"{country_info['flag']} Загружаем {country_name}...")
+        response = requests.get(country_info['url'], timeout=15)
         response.raise_for_status()
-        return country_key, response.text.strip(), True
+        
+        content = response.text.strip()
+        print(f"  ✓ {country_info['flag']} {country_name}: {len(content)} символов")
+        return country_name, content, True
+    except requests.exceptions.RequestException as e:
+        print(f"  ✗ {country_info['flag']} {country_name}: ошибка сети - {e}")
+        return country_name, None, False
     except Exception as e:
-        print(f"  ✗ {country_info['flag']} {country_info['name']}: ошибка загрузки")
-        return country_key, None, False
+        print(f"  ✗ {country_info['flag']} {country_name}: ошибка - {e}")
+        return country_name, None, False
 
-def save_country_file(country_key, country_info, content):
+def save_country_file(country_name, country_info, content):
     """Сохранение данных в файл для страны"""
     try:
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         
-        filename = f"{country_key}.txt"
+        # Формируем имя файла в нужном формате
+        filename_base = country_info['filename']  # 🇳🇱 Нидерланды 🇳🇱
+        filename = clean_filename(filename_base)
         filepath = os.path.join(OUTPUT_DIR, filename)
         
-        # Создаем заголовок с информацией
-        header = f"# {country_info['flag']} {country_info['name']}\n"
-        header += f"# URL: {country_info['url']}\n"
-        header += f"# Обновлено: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-        header += "#" * 40 + "\n\n"
+        # Создаем заголовок в том же формате
+        header = f"{filename_base}\n"
+        header += f"{country_info['url']}\n"
+        header += f"Обновлено: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        header += "=" * 50 + "\n\n"
         
         # Сохраняем в файл
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(header + content)
         
+        print(f"  ✓ Файл сохранен: {filename}")
         return True
     except Exception as e:
-        print(f"  ✗ Ошибка сохранения {country_info['name']}: {e}")
+        print(f"  ✗ Ошибка сохранения {country_name}: {e}")
         return False
 
-def has_content_changed(country_key, new_content):
+def has_content_changed(country_name, country_info, new_content):
     """Проверка изменилось ли содержимое"""
-    filepath = os.path.join(OUTPUT_DIR, f"{country_key}.txt")
+    filename_base = country_info['filename']
+    filename = clean_filename(filename_base)
+    filepath = os.path.join(OUTPUT_DIR, filename)
     
     if not os.path.exists(filepath):
         return True
@@ -94,79 +114,106 @@ def has_content_changed(country_key, new_content):
         with open(filepath, 'r', encoding='utf-8') as f:
             old_content = f.read()
         
-        # Сравниваем хеши (игнорируя заголовок с датой)
-        old_lines = old_content.split('\n')
-        new_lines = new_content.split('\n')
+        # Извлекаем только основное содержимое (после заголовка)
+        lines = old_content.split('\n')
         
-        # Сравниваем только основное содержимое
-        old_hash = hashlib.md5('\n'.join(old_lines[4:]).encode()).hexdigest()
+        # Находим где начинается основное содержимое (после разделителя "=")
+        content_start = 0
+        for i, line in enumerate(lines):
+            if '=====' in line:  # Ищем разделительную линию
+                content_start = i + 1
+                break
+        
+        # Сравниваем хеши основного содержимого
+        old_main_content = '\n'.join(lines[content_start:]) if content_start < len(lines) else ''
+        old_hash = hashlib.md5(old_main_content.encode()).hexdigest()
         new_hash = hashlib.md5(new_content.encode()).hexdigest()
         
         return old_hash != new_hash
-    except:
+    except Exception as e:
+        print(f"  ⚠ Ошибка при проверке изменений {country_name}: {e}")
         return True
 
-def process_single_country(country_key, country_info):
+def process_single_country(country_name, country_info):
     """Обработка одной страны"""
     # Загружаем данные
-    country_key, content, success = fetch_country_data(country_key, country_info)
+    country_name, content, success = fetch_country_data(country_name, country_info)
     
     if not success or not content:
-        return country_key, False, "Ошибка загрузки"
+        return country_name, False, "Ошибка загрузки"
     
     # Проверяем изменения
-    if has_content_changed(country_key, content):
+    if has_content_changed(country_name, country_info, content):
         # Сохраняем обновленные данные
-        if save_country_file(country_key, country_info, content):
-            return country_key, True, "Обновлен"
+        if save_country_file(country_name, country_info, content):
+            return country_name, True, "Обновлен"
         else:
-            return country_key, False, "Ошибка сохранения"
+            return country_name, False, "Ошибка сохранения"
     else:
-        return country_key, True, "Без изменений"
+        return country_name, True, "Без изменений"
 
 def main():
-    print("=" * 50)
-    print("🔄 ОБНОВЛЕНИЕ ПОДПИСОК (8 СТРАН)")
-    print("=" * 50)
+    print("=" * 60)
+    print("🔄 ОБНОВЛЕНИЕ ПОДПИСОК 8 СТРАН (РУССКИЕ НАЗВАНИЯ)")
+    print("=" * 60)
     
     results = []
     
     # Параллельная загрузка всех стран
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
         # Запускаем задачи для всех стран
         futures = []
-        for country_key, country_info in COUNTRIES.items():
-            future = executor.submit(process_single_country, country_key, country_info)
+        for country_name, country_info in COUNTRIES.items():
+            future = executor.submit(process_single_country, country_name, country_info)
             futures.append(future)
         
         # Собираем результаты
         for future in concurrent.futures.as_completed(futures):
             try:
-                result = future.result(timeout=15)
+                result = future.result(timeout=20)
                 results.append(result)
-            except:
-                results.append(("unknown", False, "Таймаут"))
+            except concurrent.futures.TimeoutError:
+                results.append(("Таймаут", False, "Таймаут выполнения"))
+                print("  ⚠ Одна из стран: превышено время ожидания")
+            except Exception as e:
+                results.append(("Ошибка", False, f"Ошибка: {e}"))
     
     # Выводим результаты
-    print("\n📊 РЕЗУЛЬТАТЫ:")
-    print("-" * 50)
+    print("\n" + "=" * 60)
+    print("📊 РЕЗУЛЬТАТЫ ОБНОВЛЕНИЯ:")
+    print("=" * 60)
     
     updated_count = 0
-    for country_key, success, message in results:
-        if country_key in COUNTRIES:
-            country_info = COUNTRIES[country_key]
+    total_countries = len(COUNTRIES)
+    
+    for country_name, success, message in results:
+        if country_name in COUNTRIES:
+            country_info = COUNTRIES[country_name]
             status = "✅" if success else "❌"
-            print(f"{status} {country_info['flag']} {country_info['name']}: {message}")
+            print(f"{status} {country_info['flag']} {country_name}: {message}")
             if "Обновлен" in message:
                 updated_count += 1
+        else:
+            print(f"❌ {country_name}: {message}")
     
-    print("-" * 50)
-    print(f"📈 Обновлено файлов: {updated_count}/8")
-    print(f"🕐 Время: {datetime.now().strftime('%H:%M:%S')}")
-    print("=" * 50)
+    print("-" * 60)
     
-    # Возвращаем успех, если все страны обработаны
-    return len([r for r in results if r[1]]) >= 4  # Хотя бы половина успешно
+    # Выводим список созданных файлов
+    if os.path.exists(OUTPUT_DIR):
+        print("📁 СОЗДАННЫЕ ФАЙЛЫ:")
+        files = os.listdir(OUTPUT_DIR)
+        for file in sorted(files):
+            if file.endswith('.txt'):
+                print(f"  📄 {file}")
+    
+    print("-" * 60)
+    print(f"📈 ОБНОВЛЕНО: {updated_count}/{total_countries} стран")
+    print(f"🕐 ВРЕМЯ: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 60)
+    
+    # Возвращаем успех, если хотя бы половина стран обработана
+    successful_count = len([r for r in results if r[1]])
+    return successful_count >= total_countries / 2
 
 if __name__ == "__main__":
     success = main()
