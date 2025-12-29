@@ -1,8 +1,8 @@
-name: Update Country Subscriptions
+name: Update VLESS Subscriptions
 
 on:
   schedule:
-    # Каждые 6 часов (0:00, 6:00, 12:00, 18:00)
+    # Каждые 6 часов (0:00, 6:00, 12:00, 18:00 UTC)
     - cron: '0 */6 * * *'
   workflow_dispatch:  # Ручной запуск
   push:
@@ -25,7 +25,7 @@ jobs:
       run: |
         pip install requests
         
-    - name: Run subscription updater
+    - name: Run VLESS updater
       run: |
         python scripts/fetch_subscriptions.py
       
@@ -33,12 +33,12 @@ jobs:
       run: |
         git config --local user.email "github-actions@github.com"
         git config --local user.name "GitHub Actions"
-        git add subscriptions/
+        git add VLESS_Subscriptions.txt
         
         if git diff --cached --quiet; then
-          echo "🟡 Нет изменений в файлах подписок"
+          echo "🟡 Нет изменений в файле VLESS_Subscriptions.txt"
         else
-          git commit -m "🌍 Обновление подписок 8 стран [$(date +'%Y-%m-%d %H:%M')]"
+          git commit -m "⚡ Обновление VLESS подписок [$(date +'%Y-%m-%d %H:%M')]"
           git push
-          echo "🟢 Подписки успешно обновлены и закоммичены"
+          echo "🟢 VLESS подписки успешно обновлены и закоммичены"
         fi
