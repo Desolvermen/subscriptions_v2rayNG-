@@ -2,110 +2,63 @@ import requests
 import os
 import hashlib
 from datetime import datetime
-import concurrent.futures
-import re
 
-# Конфигурация 8 стран с русскими названиями
-COUNTRIES = {
-    'Нидерланды': {
-        'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=nl',
-        'flag': '🇳🇱',
-        'filename': '🇳🇱 Нидерланды 🇳🇱'
-    },
-    'Германия': {
-        'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=de',
-        'flag': '🇩🇪',
-        'filename': '🇩🇪 Германия 🇩🇪'
-    },
-    'Финляндия': {
-        'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=fi',
-        'flag': '🇫🇮',
-        'filename': '🇫🇮 Финляндия 🇫🇮'
-    },
-    'Турция': {
-        'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=tr',
-        'flag': '🇹🇷',
-        'filename': '🇹🇷 Турция 🇹🇷'
-    },
-    'Великобритания': {
-        'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=gb',
-        'flag': '🇬🇧',
-        'filename': '🇬🇧 Великобритания 🇬🇧'
-    },
-    'Швеция': {
-        'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=se',
-        'flag': '🇸🇪',
-        'filename': '🇸🇪 Швеция 🇸🇪'
-    },
-    'Франция': {
-        'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=fr',
-        'flag': '🇫🇷',
-        'filename': '🇫🇷 Франция 🇫🇷'
-    },
-    'Норвегия': {
-        'url': 'https://istanbulsydneyhotel.com/blogs/site/sni.php?country=no',
-        'flag': '🇳🇴',
-        'filename': '🇳🇴 Норвегия 🇳🇴'
-    }
-}
-
+# Конфигурация - одна ссылка для протокола Trojan
+TROJAN_URL = "https://istanbulsydneyhotel.com/blogs/site/sni.php?kind=trojan"
 OUTPUT_DIR = "subscriptions"
+OUTPUT_FILENAME = "trojan_subscriptions.txt"
 
-def clean_filename(filename):
-    """Очистка имени файла от небезопасных символов"""
-    # Заменяем символы, которые могут быть проблемными в именах файлов
-    safe_name = re.sub(r'[<>:"/\\|?*]', '', filename)
-    safe_name = safe_name.replace(' ', '_')  # Заменяем пробелы на подчеркивания
-    return safe_name + '.txt'
-
-def fetch_country_data(country_name, country_info):
-    """Загрузка данных для одной страны"""
+def fetch_trojan_data():
+    """Загрузка данных по протоколу Trojan"""
     try:
-        print(f"{country_info['flag']} Загружаем {country_name}...")
-        response = requests.get(country_info['url'], timeout=15)
+        print(f"🔗 Загружаем Trojan-подписки с: {TROJAN_URL}")
+        response = requests.get(TROJAN_URL, timeout=15)
         response.raise_for_status()
         
         content = response.text.strip()
-        print(f"  ✓ {country_info['flag']} {country_name}: {len(content)} символов")
-        return country_name, content, True
+        if not content:
+            print("⚠️  Получен пустой ответ")
+            return None, False
+        
+        print(f"✅ Успешно загружено {len(content)} символов")
+        print(f"📊 Найдено строк: {len(content.splitlines())}")
+        return content, True
+        
     except requests.exceptions.RequestException as e:
-        print(f"  ✗ {country_info['flag']} {country_name}: ошибка сети - {e}")
-        return country_name, None, False
+        print(f"❌ Ошибка при загрузке: {e}")
+        return None, False
     except Exception as e:
-        print(f"  ✗ {country_info['flag']} {country_name}: ошибка - {e}")
-        return country_name, None, False
+        print(f"❌ Неожиданная ошибка: {e}")
+        return None, False
 
-def save_country_file(country_name, country_info, content):
-    """Сохранение данных в файл для страны"""
+def save_trojan_file(content):
+    """Сохранение Trojan-подписок в файл"""
     try:
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         
-        # Формируем имя файла в нужном формате
-        filename_base = country_info['filename']  # 🇳🇱 Нидерланды 🇳🇱
-        filename = clean_filename(filename_base)
-        filepath = os.path.join(OUTPUT_DIR, filename)
+        filepath = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
         
-        # Создаем заголовок в том же формате
-        header = f"{filename_base}\n"
-        header += f"{country_info['url']}\n"
-        header += f"Обновлено: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        # Создаем информативный заголовок
+        header = "🚀 ПОДПИСКИ TROJAN (НАДЕЖНЫЙ ПРОТОКОЛ)\n"
+        header += "=" * 50 + "\n"
+        header += f"📅 Обновлено: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        header += f"🔗 Источник: {TROJAN_URL}\n"
         header += "=" * 50 + "\n\n"
         
         # Сохраняем в файл
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(header + content)
         
-        print(f"  ✓ Файл сохранен: {filename}")
+        print(f"✅ Файл сохранен: {filepath}")
         return True
+        
     except Exception as e:
-        print(f"  ✗ Ошибка сохранения {country_name}: {e}")
+        print(f"❌ Ошибка при сохранении файла: {e}")
         return False
 
-def has_content_changed(country_name, country_info, new_content):
-    """Проверка изменилось ли содержимое"""
-    filename_base = country_info['filename']
-    filename = clean_filename(filename_base)
-    filepath = os.path.join(OUTPUT_DIR, filename)
+def has_content_changed(new_content):
+    """Проверка, изменилось ли содержимое"""
+    filepath = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
     
     if not os.path.exists(filepath):
         return True
@@ -114,106 +67,83 @@ def has_content_changed(country_name, country_info, new_content):
         with open(filepath, 'r', encoding='utf-8') as f:
             old_content = f.read()
         
-        # Извлекаем только основное содержимое (после заголовка)
+        # Извлекаем основное содержимое (после заголовка)
         lines = old_content.split('\n')
         
-        # Находим где начинается основное содержимое (после разделителя "=")
+        # Ищем, где заканчивается заголовок
         content_start = 0
         for i, line in enumerate(lines):
-            if '=====' in line:  # Ищем разделительную линию
-                content_start = i + 1
+            if 'trojan://' in line:  # Первая строка с конфигурацией
+                content_start = i
                 break
         
-        # Сравниваем хеши основного содержимого
+        # Если не нашли конфигураций, значит файл пустой
+        if content_start == 0 and 'trojan://' not in old_content:
+            return True
+        
+        # Сравниваем основное содержимое
         old_main_content = '\n'.join(lines[content_start:]) if content_start < len(lines) else ''
         old_hash = hashlib.md5(old_main_content.encode()).hexdigest()
         new_hash = hashlib.md5(new_content.encode()).hexdigest()
         
-        return old_hash != new_hash
+        changed = old_hash != new_hash
+        if not changed:
+            print("ℹ️  Содержимое не изменилось с прошлого обновления")
+        
+        return changed
+        
     except Exception as e:
-        print(f"  ⚠ Ошибка при проверке изменений {country_name}: {e}")
+        print(f"⚠️  Ошибка при проверке изменений: {e}")
         return True
 
-def process_single_country(country_name, country_info):
-    """Обработка одной страны"""
-    # Загружаем данные
-    country_name, content, success = fetch_country_data(country_name, country_info)
+def filter_trojan_lines(content):
+    """Фильтрация только Trojan конфигураций (опционально)"""
+    lines = content.split('\n')
+    trojan_lines = [line for line in lines if line.strip().startswith('trojan://')]
     
-    if not success or not content:
-        return country_name, False, "Ошибка загрузки"
+    if len(trojan_lines) < len(lines):
+        print(f"ℹ️  Отфильтровано {len(lines) - len(trojan_lines)} не-Trojan строк")
     
-    # Проверяем изменения
-    if has_content_changed(country_name, country_info, content):
-        # Сохраняем обновленные данные
-        if save_country_file(country_name, country_info, content):
-            return country_name, True, "Обновлен"
-        else:
-            return country_name, False, "Ошибка сохранения"
-    else:
-        return country_name, True, "Без изменений"
+    return '\n'.join(trojan_lines)
 
 def main():
     print("=" * 60)
-    print("🔄 ОБНОВЛЕНИЕ ПОДПИСОК 8 СТРАН (РУССКИЕ НАЗВАНИЯ)")
+    print("🔄 ОБНОВЛЕНИЕ TROJAN-ПОДПИСОК")
     print("=" * 60)
     
-    results = []
+    # Загружаем данные
+    content, success = fetch_trojan_data()
+    if not success or content is None:
+        print("❌ Не удалось загрузить данные")
+        return False
     
-    # Параллельная загрузка всех стран
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        # Запускаем задачи для всех стран
-        futures = []
-        for country_name, country_info in COUNTRIES.items():
-            future = executor.submit(process_single_country, country_name, country_info)
-            futures.append(future)
-        
-        # Собираем результаты
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                result = future.result(timeout=20)
-                results.append(result)
-            except concurrent.futures.TimeoutError:
-                results.append(("Таймаут", False, "Таймаут выполнения"))
-                print("  ⚠ Одна из стран: превышено время ожидания")
-            except Exception as e:
-                results.append(("Ошибка", False, f"Ошибка: {e}"))
+    # Опционально: фильтруем только Trojan строки
+    filtered_content = filter_trojan_lines(content)
     
-    # Выводим результаты
-    print("\n" + "=" * 60)
-    print("📊 РЕЗУЛЬТАТЫ ОБНОВЛЕНИЯ:")
-    print("=" * 60)
+    if not filtered_content:
+        print("⚠️  Не найдено ни одной Trojan-конфигурации")
+        return False
     
-    updated_count = 0
-    total_countries = len(COUNTRIES)
-    
-    for country_name, success, message in results:
-        if country_name in COUNTRIES:
-            country_info = COUNTRIES[country_name]
-            status = "✅" if success else "❌"
-            print(f"{status} {country_info['flag']} {country_name}: {message}")
-            if "Обновлен" in message:
-                updated_count += 1
+    # Проверяем изменения
+    if has_content_changed(filtered_content):
+        # Сохраняем обновленные данные
+        if save_trojan_file(filtered_content):
+            print("✅ Trojan-подписки успешно обновлены!")
+            
+            # Показываем несколько первых конфигураций для проверки
+            lines = filtered_content.split('\n')
+            print(f"\n📋 Примеры конфигураций ({min(3, len(lines))} из {len(lines)}):")
+            for i in range(min(3, len(lines))):
+                if lines[i].strip():
+                    print(f"  {lines[i][:80]}...")
+            
+            return True
         else:
-            print(f"❌ {country_name}: {message}")
-    
-    print("-" * 60)
-    
-    # Выводим список созданных файлов
-    if os.path.exists(OUTPUT_DIR):
-        print("📁 СОЗДАННЫЕ ФАЙЛЫ:")
-        files = os.listdir(OUTPUT_DIR)
-        for file in sorted(files):
-            if file.endswith('.txt'):
-                print(f"  📄 {file}")
-    
-    print("-" * 60)
-    print(f"📈 ОБНОВЛЕНО: {updated_count}/{total_countries} стран")
-    print(f"🕐 ВРЕМЯ: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 60)
-    
-    # Возвращаем успех, если хотя бы половина стран обработана
-    successful_count = len([r for r in results if r[1]])
-    return successful_count >= total_countries / 2
+            print("❌ Ошибка при сохранении файла")
+            return False
+    else:
+        print("✅ Обновление не требуется (данные не изменились)")
+        return True
 
 if __name__ == "__main__":
     success = main()
