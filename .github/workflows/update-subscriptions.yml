@@ -1,0 +1,44 @@
+name: Update Country Subscriptions
+
+on:
+  schedule:
+    # Каждые 6 часов (0:00, 6:00, 12:00, 18:00)
+    - cron: '0 */6 * * *'
+  workflow_dispatch:  # Ручной запуск
+  push:
+    branches: [ main ]
+
+jobs:
+  update-subscriptions:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        pip install requests
+        
+    - name: Run subscription updater
+      run: |
+        python scripts/fetch_subscriptions.py
+      
+    - name: Commit updates if changed
+      run: |
+        git config --local user.email "github-actions@github.com"
+        git config --local user.name "GitHub Actions"
+        git add subscriptions/
+        
+        if git diff --cached --quiet; then
+          echo "🟡 Нет изменений в файлах подписок"
+        else
+          git commit -m "🌍 Обновление подписок 8 стран [$(date +'%Y-%m-%d %H:%M')]"
+          git push
+          echo "🟢 Подписки успешно обновлены и закоммичены"
+        fi
