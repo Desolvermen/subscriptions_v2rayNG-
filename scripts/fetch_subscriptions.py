@@ -3,16 +3,15 @@ import os
 import hashlib
 from datetime import datetime
 
-# Конфигурация - одна ссылка для протокола Trojan
-TROJAN_URL = "https://istanbulsydneyhotel.com/blogs/site/sni.php?kind=trojan"
-OUTPUT_DIR = "subscriptions"
-OUTPUT_FILENAME = "trojan_subscriptions.txt"
+# Конфигурация - одна ссылка для протокола VLESS
+VLESS_URL = "https://istanbulsydneyhotel.com/blogs/site/sni.php?kind=vless"
+OUTPUT_FILENAME = "VLESS_Subscriptions.txt"  # Файл в корне репозитория
 
-def fetch_trojan_data():
-    """Загрузка данных по протоколу Trojan"""
+def fetch_vless_data():
+    """Загрузка данных по протоколу VLESS"""
     try:
-        print(f"🔗 Загружаем Trojan-подписки с: {TROJAN_URL}")
-        response = requests.get(TROJAN_URL, timeout=15)
+        print(f"🔗 Загружаем VLESS-подписки с: {VLESS_URL}")
+        response = requests.get(VLESS_URL, timeout=20)
         response.raise_for_status()
         
         content = response.text.strip()
@@ -31,25 +30,22 @@ def fetch_trojan_data():
         print(f"❌ Неожиданная ошибка: {e}")
         return None, False
 
-def save_trojan_file(content):
-    """Сохранение Trojan-подписок в файл"""
+def save_vless_file(content):
+    """Сохранение VLESS-подписок в файл в корне репозитория"""
     try:
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
-        
-        filepath = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
-        
         # Создаем информативный заголовок
-        header = "🚀 ПОДПИСКИ TROJAN (НАДЕЖНЫЙ ПРОТОКОЛ)\n"
+        header = "⚡ ПОДПИСКИ VLESS (НАДЕЖНЫЙ ПРОТОКОЛ)\n"
         header += "=" * 50 + "\n"
         header += f"📅 Обновлено: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-        header += f"🔗 Источник: {TROJAN_URL}\n"
+        header += f"🔗 Источник: {VLESS_URL}\n"
+        header += "💡 Совет: Ищите конфигурации с 'reality' и 'xtls' для максимальной надежности\n"
         header += "=" * 50 + "\n\n"
         
-        # Сохраняем в файл
-        with open(filepath, 'w', encoding='utf-8') as f:
+        # Сохраняем в файл в корне репозитория
+        with open(OUTPUT_FILENAME, 'w', encoding='utf-8') as f:
             f.write(header + content)
         
-        print(f"✅ Файл сохранен: {filepath}")
+        print(f"✅ Файл сохранен: {OUTPUT_FILENAME}")
         return True
         
     except Exception as e:
@@ -58,27 +54,25 @@ def save_trojan_file(content):
 
 def has_content_changed(new_content):
     """Проверка, изменилось ли содержимое"""
-    filepath = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
-    
-    if not os.path.exists(filepath):
+    if not os.path.exists(OUTPUT_FILENAME):
         return True
     
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(OUTPUT_FILENAME, 'r', encoding='utf-8') as f:
             old_content = f.read()
         
         # Извлекаем основное содержимое (после заголовка)
         lines = old_content.split('\n')
         
-        # Ищем, где заканчивается заголовок
+        # Ищем, где заканчивается заголовок (первая строка с vless://)
         content_start = 0
         for i, line in enumerate(lines):
-            if 'trojan://' in line:  # Первая строка с конфигурацией
+            if line.strip().startswith('vless://'):  # Первая строка с конфигурацией
                 content_start = i
                 break
         
         # Если не нашли конфигураций, значит файл пустой
-        if content_start == 0 and 'trojan://' not in old_content:
+        if content_start == 0 and 'vless://' not in old_content:
             return True
         
         # Сравниваем основное содержимое
@@ -96,46 +90,94 @@ def has_content_changed(new_content):
         print(f"⚠️  Ошибка при проверке изменений: {e}")
         return True
 
-def filter_trojan_lines(content):
-    """Фильтрация только Trojan конфигураций (опционально)"""
+def filter_vless_lines(content):
+    """Фильтрация только VLESS конфигураций и их анализ"""
     lines = content.split('\n')
-    trojan_lines = [line for line in lines if line.strip().startswith('trojan://')]
+    vless_lines = []
     
-    if len(trojan_lines) < len(lines):
-        print(f"ℹ️  Отфильтровано {len(lines) - len(trojan_lines)} не-Trojan строк")
+    # Счетчики для статистики
+    total_lines = len(lines)
+    vless_count = 0
+    reality_count = 0
+    xtls_count = 0
+    ws_count = 0
+    tcp_count = 0
     
-    return '\n'.join(trojan_lines)
+    for line in lines:
+        line = line.strip()
+        if line.startswith('vless://'):
+            vless_lines.append(line)
+            vless_count += 1
+            
+            # Анализ конфигурации для статистики
+            if 'reality' in line.lower():
+                reality_count += 1
+            if 'xtls' in line.lower():
+                xtls_count += 1
+            if 'type=ws' in line.lower() or 'type=websocket' in line.lower():
+                ws_count += 1
+            if 'type=tcp' in line.lower():
+                tcp_count += 1
+    
+    # Вывод статистики
+    print(f"📊 Анализ конфигураций:")
+    print(f"   Всего строк: {total_lines}")
+    print(f"   VLESS конфигураций: {vless_count}")
+    if vless_count > 0:
+        print(f"   • Reality: {reality_count}")
+        print(f"   • XTLS: {xtls_count}")
+        print(f"   • WebSocket: {ws_count}")
+        print(f"   • TCP: {tcp_count}")
+    
+    if vless_count < total_lines:
+        print(f"ℹ️  Отфильтровано {total_lines - vless_count} не-VLESS строк")
+    
+    # Если есть Reality конфигурации, покажем одну как пример
+    if reality_count > 0:
+        print(f"\n💡 Найдены конфигурации Reality (самые надежные!)")
+        for line in vless_lines:
+            if 'reality' in line.lower():
+                print(f"   Пример: {line[:100]}...")
+                break
+    
+    return '\n'.join(vless_lines)
 
 def main():
     print("=" * 60)
-    print("🔄 ОБНОВЛЕНИЕ TROJAN-ПОДПИСОК")
+    print("🔄 ОБНОВЛЕНИЕ VLESS-ПОДПИСОК")
     print("=" * 60)
     
     # Загружаем данные
-    content, success = fetch_trojan_data()
+    content, success = fetch_vless_data()
     if not success or content is None:
         print("❌ Не удалось загрузить данные")
         return False
     
-    # Опционально: фильтруем только Trojan строки
-    filtered_content = filter_trojan_lines(content)
+    # Фильтруем только VLESS строки и анализируем
+    filtered_content = filter_vless_lines(content)
     
     if not filtered_content:
-        print("⚠️  Не найдено ни одной Trojan-конфигурации")
+        print("⚠️  Не найдено ни одной VLESS-конфигурации")
         return False
     
     # Проверяем изменения
     if has_content_changed(filtered_content):
         # Сохраняем обновленные данные
-        if save_trojan_file(filtered_content):
-            print("✅ Trojan-подписки успешно обновлены!")
+        if save_vless_file(filtered_content):
+            print(f"\n✅ VLESS-подписки успешно обновлены!")
+            print(f"📁 Файл в корне репозитория: {OUTPUT_FILENAME}")
             
             # Показываем несколько первых конфигураций для проверки
             lines = filtered_content.split('\n')
             print(f"\n📋 Примеры конфигураций ({min(3, len(lines))} из {len(lines)}):")
             for i in range(min(3, len(lines))):
                 if lines[i].strip():
-                    print(f"  {lines[i][:80]}...")
+                    # Обрезаем для лучшего отображения
+                    config_line = lines[i].strip()
+                    if len(config_line) > 100:
+                        print(f"  {i+1}. {config_line[:100]}...")
+                    else:
+                        print(f"  {i+1}. {config_line}")
             
             return True
         else:
